@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "splinter"
+version = "0.1.0"
+description = "small custom linter"
+authors = [{name = "Ebo Peerbooms"}]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[project.scripts]
+splinter = "splinter.splinter:main"
