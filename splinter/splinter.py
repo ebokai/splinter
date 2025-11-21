@@ -1,9 +1,17 @@
 # /splinter/splinter.py
 
 import ast
+import json
 import os
 import sys
 from pathlib import Path
+
+ISSUE_MESSAGES = {
+    "short-variable-name": "Variable name '{var}' is too short",
+    "long-variable-name": "Variable name '{var}' is too long",
+    "short-function-name": "Function name '{var} is too short",
+    "long-function-name": "Function name {var} is too long",
+}
 
 
 class ShortVarLinter(ast.NodeVisitor):
@@ -12,15 +20,31 @@ class ShortVarLinter(ast.NodeVisitor):
         self.issues = []
         self.allowed_var_names = []
 
+        config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
+        with open(config_path, "r", encoding="utf-8") as f:
+            self.config = json.load(f)
+
         allowlist_path = Path(__file__).parent.parent / "allowlist.txt"
         with open(allowlist_path, "r", encoding="utf-8") as f:
             for line in f:
                 self.allowed_var_names.append(line.strip("\n"))
 
     def visit_Name(self, node):
-        # check for short variable names
-        if isinstance(node.ctx, ast.Store) and len(node.id) < 4:
-            self.issues.append((node.lineno, node.id))
+        if not isinstance(node.ctx, ast.Store):
+            return self.generic_visit(node)
+
+        if len(node.id) < self.config["short-variable-length"]:
+            self.issues.append((node.lineno, node.id, "short-variable-name"))
+        elif len(node.id) > self.config["long-variable-length"]:
+            self.issues.append((node.lineno, node.id, "long-variable-name"))
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        name_len = len(node.name)
+        if name_len < self.config["short-function-length"]:
+            self.issues.append((node.lineno, node.name, "short-function-name"))
+        elif name_len > self.config["long-function-length"]:
+            self.issues.append((node.lineno, node.name, "long-function-name"))
         self.generic_visit(node)
 
 
@@ -35,11 +59,11 @@ def lint_file(filepath):
     linter = ShortVarLinter(filepath)
     linter.visit(tree)
 
-    for lineno, var in linter.issues:
+    for lineno, var, issue in linter.issues:
         if var not in linter.allowed_var_names:
-            print(
-                f"{filepath}:{lineno}: Variable name '{var}' is too short [short-variable]"
-            )
+            message = ISSUE_MESSAGES.get(issue, "Unknown issue").format(var=var)
+            print(f"{filepath}:{lineno}: {message} [{issue}]")
+
     return len(linter.issues)
 
 

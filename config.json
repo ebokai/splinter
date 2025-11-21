@@ -1,0 +1,6 @@
+{
+	"short-variable-length" : 4,
+	"long-variable-length" : 20,
+	"short-function-length" : 4,
+	"long-function-length" : 20
+}
